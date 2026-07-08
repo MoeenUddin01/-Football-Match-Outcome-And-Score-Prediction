@@ -1,19 +1,23 @@
 data_paths:
+  raw_dir: "data/raw"
   raw_results: "data/raw/results.csv"
   raw_goalscorers: "data/raw/goalscorers.csv"
   raw_shootouts: "data/raw/shootouts.csv"
   raw_former_names: "data/raw/former_names.csv"
   interim_dir: "data/interim"
   processed_dir: "data/processed"
+  artifacts_dir: "outputs/artifacts"
 
 date_splits:
   train_end: "2018-12-31"
   val_end: "2022-12-31"
 
 elo_params:
-  k_factor: 20.0
-  home_advantage: 100.0
   initial_rating: 1500.0
+  home_advantage: 100.0
+  k_factor_tiers:
+    default: 20.0
+    major_tournament: 30.0
 
 rolling_window_sizes:
   form_window: 5

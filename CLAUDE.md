@@ -109,6 +109,7 @@ football-outcome-prediction/
 │   ├── raw/
 │   ├── interim/
 │   └── processed/
+│       └── features.parquet
 ├── src/
 │   └── football_predictor/
 │       ├── __init__.py
@@ -141,6 +142,11 @@ football-outcome-prediction/
 │   ├── run_pipeline.py
 │   └── validate_worldcup2022.py
 └── outputs/
+    ├── artifacts/
+    │   ├── team_elo_latest.json
+    │   ├── tournament_tier_map.json
+    │   ├── feature_columns.json
+    │   └── scaler.pkl
     ├── models/
     ├── reports/
     └── figures/
