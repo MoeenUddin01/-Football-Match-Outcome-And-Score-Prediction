@@ -26,11 +26,18 @@ This project builds a temporally-valid machine learning pipeline for predicting 
 
 Implemented modules include:
 
-- data loading: results, goalscorers, shootouts, and former names
+- data loading: results, goalscorers, shootouts, and former names with dtype enforcement and logging
 - data cleaning: null-score removal, chronological sorting, duplicate resolution, and conflict exclusion
 - name resolution: former-name lookup and team-name resolution with safe fallback logging
+- cleaned results persistence: parquet export of deduplicated match data (49,492 rows from 49,502 raw)
 - reusable artifact I/O helpers for saving/loading JSON or pickle artifacts
-- initial test coverage for the data loader, cleaner, name resolver, and artifact utilities
+- comprehensive test coverage for all data-layer modules
+
+## Data pipeline
+
+The pipeline loads raw datasets, cleans them by removing null-score rows and resolving duplicates,
+and persists the final table as `data/processed/results_cleaned.parquet`. Duplicates with matching
+scores are resolved by keeping one row; conflicting duplicates are excluded entirely and logged as warnings.
 
 ## Setup
 
