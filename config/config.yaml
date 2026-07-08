@@ -16,8 +16,12 @@ elo_params:
   initial_rating: 1500.0
   home_advantage: 100.0
   k_factor_tiers:
+    friendly: 10.0
+    minor_tournament: 20.0
+    qualifier: 40.0
+    continental_championship: 50.0
+    world_cup: 60.0
     default: 20.0
-    major_tournament: 30.0
 
 rolling_window_sizes:
   form_window: 5
