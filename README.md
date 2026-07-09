@@ -10,8 +10,7 @@ The repository now includes a modular Python package under [src/football_predict
 - Data cleaning with null-score filtering, chronological ordering, duplicate handling, and conflict logging
 - Team name resolution for historical identity mapping
 - A chronological Elo rating engine with pre/post-match ratings and tournament-tier K-factor mapping
-- Feature-building scaffolding for future rolling and match-context features
-- Baseline, outcome, and score-model modules with evaluation support
+- Rolling statistics engine computing form, goals, rest days, and head-to-head features
 - Reusable artifact I/O helpers and a CLI pipeline entrypoint
 
 ## Elo engine
@@ -24,6 +23,19 @@ The Elo implementation in [src/football_predictor/features/elo.py](src/football_
 - Pre-match ratings stored as `home_elo_pre` and `away_elo_pre`
 - Post-match ratings stored as `home_elo_post` and `away_elo_post`
 - Tournament-tier K-factor lookup configured in [config/config.yaml](config/config.yaml)
+
+## Rolling statistics
+
+The rolling stats engine in [src/football_predictor/features/rolling_stats.py](src/football_predictor/features/rolling_stats.py) computes team-level and head-to-head features using only prior matches:
+
+- **Team-level features** (for both home and away teams):
+  - Average goals scored and conceded over configurable windows (default: last 5 matches)
+  - Win rate over the form window
+  - Rest days since previous match (defaults to 30 for first appearances)
+- **Head-to-head features**:
+  - Home wins, away wins, and draws between the two specific teams
+- **Anti-leakage guarantee**: Single forward pass through chronological data; features for match N use only matches 1..N-1
+- Configurable window sizes in [config/config.yaml](config/config.yaml) under `rolling_window_sizes`
 
 ## Project structure
 
