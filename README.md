@@ -11,6 +11,7 @@ The repository now includes a modular Python package under [src/football_predict
 - Team name resolution for historical identity mapping
 - A chronological Elo rating engine with pre/post-match ratings and tournament-tier K-factor mapping
 - Rolling statistics engine computing form, goals, rest days, and head-to-head features
+- Feature table builder that assembles all features and saves to parquet
 - Reusable artifact I/O helpers and a CLI pipeline entrypoint
 
 ## Elo engine
