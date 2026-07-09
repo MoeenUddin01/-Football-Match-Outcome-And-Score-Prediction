@@ -31,9 +31,23 @@ def _load_config(config: Any | None = None) -> dict[str, Any]:
     raise TypeError("config must be a dict, YAML path, or None")
 
 
+def _normalize_window_sizes(raw_params: dict[str, Any]) -> dict[str, list[int]]:
+    """Normalize window sizes from config to lists of ints.
+
+    Handles both single int values and lists from config.
+    """
+    normalized: dict[str, list[int]] = {}
+    for key, value in raw_params.items():
+        if isinstance(value, list):
+            normalized[key] = [int(v) for v in value]
+        else:
+            normalized[key] = [int(value)]
+    return normalized
+
+
 def compute_rolling_features(
     results_df: pd.DataFrame,
-    window_sizes: dict[str, int] | None = None,
+    window_sizes: dict[str, int | list[int]] | None = None,
     config: Any | None = None,
 ) -> pd.DataFrame:
     """Compute rolling features for each match using only prior matches.
@@ -49,7 +63,7 @@ def compute_rolling_features(
         Must be sorted by date in ascending order.
     window_sizes : dict, optional
         Dictionary with keys 'form_window', 'goals_window', 'h2h_window'.
-        If None, loads from config.
+        Values can be single ints or lists of ints. If None, loads from config.
     config : dict, optional
         Configuration dictionary. If None, loads from config.yaml.
 
@@ -74,17 +88,25 @@ def compute_rolling_features(
     rolling_params = config_data.get("rolling_window_sizes", {})
 
     if window_sizes is None:
-        window_sizes = {
-            "form_window": int(rolling_params.get("form_window", 5)),
-            "goals_window": int(rolling_params.get("goals_window", 5)),
-            "h2h_window": int(rolling_params.get("h2h_window", 5)),
-        }
+        window_sizes = _normalize_window_sizes(rolling_params)
+    else:
+        normalized: dict[str, list[int]] = {}
+        for key, value in window_sizes.items():
+            if isinstance(value, list):
+                normalized[key] = [int(v) for v in value]
+            else:
+                normalized[key] = [int(value)]
+        window_sizes = normalized
 
-    goals_window = int(window_sizes.get("goals_window", 5))
-    form_window = int(window_sizes.get("form_window", 5))
-    h2h_window = int(window_sizes.get("h2h_window", 5))
+    goals_windows = window_sizes.get("goals_window", [5])
+    form_windows = window_sizes.get("form_window", [5])
+    h2h_windows = window_sizes.get("h2h_window", [5])
 
-    max_window = max(goals_window, form_window, h2h_window)
+    max_window = max(
+        max(goals_windows),
+        max(form_windows),
+        max(h2h_windows),
+    )
 
     output = results_df.copy()
     output["date"] = pd.to_datetime(output["date"])
@@ -92,20 +114,23 @@ def compute_rolling_features(
     team_history: dict[str, deque[dict[str, Any]]] = defaultdict(
         lambda: deque(maxlen=max_window * 2)
     )
-    team_last_match_date: dict[str, pd.Timestamp] = {}
     h2h_history: dict[tuple[str, str], deque[dict[str, Any]]] = defaultdict(
-        lambda: deque(maxlen=h2h_window * 2)
+        lambda: deque(maxlen=max(h2h_windows) * 2)
     )
 
     FIRST_MATCH_DEFAULT_REST_DAYS = 30
 
-    output[f"home_goals_scored_avg_last_{goals_window}"] = 0.0
-    output[f"home_goals_conceded_avg_last_{goals_window}"] = 0.0
-    output[f"home_win_rate_last_{form_window}"] = 0.0
+    for gw in goals_windows:
+        output[f"home_goals_scored_avg_last_{gw}"] = 0.0
+        output[f"home_goals_conceded_avg_last_{gw}"] = 0.0
+        output[f"away_goals_scored_avg_last_{gw}"] = 0.0
+        output[f"away_goals_conceded_avg_last_{gw}"] = 0.0
+
+    for fw in form_windows:
+        output[f"home_win_rate_last_{fw}"] = 0.0
+        output[f"away_win_rate_last_{fw}"] = 0.0
+
     output["home_rest_days"] = FIRST_MATCH_DEFAULT_REST_DAYS
-    output[f"away_goals_scored_avg_last_{goals_window}"] = 0.0
-    output[f"away_goals_conceded_avg_last_{goals_window}"] = 0.0
-    output[f"away_win_rate_last_{form_window}"] = 0.0
     output["away_rest_days"] = FIRST_MATCH_DEFAULT_REST_DAYS
     output["h2h_home_wins"] = 0
     output["h2h_away_wins"] = 0
@@ -136,40 +161,42 @@ def compute_rolling_features(
         else:
             output.at[idx, "away_rest_days"] = FIRST_MATCH_DEFAULT_REST_DAYS
 
-        if len(home_history) >= 1:
-            recent_home = home_history[-goals_window:]
-            output.at[idx, f"home_goals_scored_avg_last_{goals_window}"] = sum(
-                m["goals_scored"] for m in recent_home
-            ) / len(recent_home)
-            output.at[idx, f"home_goals_conceded_avg_last_{goals_window}"] = sum(
-                m["goals_conceded"] for m in recent_home
-            ) / len(recent_home)
+        for gw in goals_windows:
+            if len(home_history) >= 1:
+                recent_home = home_history[-gw:]
+                output.at[idx, f"home_goals_scored_avg_last_{gw}"] = sum(
+                    m["goals_scored"] for m in recent_home
+                ) / len(recent_home)
+                output.at[idx, f"home_goals_conceded_avg_last_{gw}"] = sum(
+                    m["goals_conceded"] for m in recent_home
+                ) / len(recent_home)
 
-        if len(home_history) >= 1:
-            recent_form_home = home_history[-form_window:]
-            output.at[idx, f"home_win_rate_last_{form_window}"] = sum(
-                1 for m in recent_form_home if m["result"] == "win"
-            ) / len(recent_form_home)
+            if len(away_history) >= 1:
+                recent_away = away_history[-gw:]
+                output.at[idx, f"away_goals_scored_avg_last_{gw}"] = sum(
+                    m["goals_scored"] for m in recent_away
+                ) / len(recent_away)
+                output.at[idx, f"away_goals_conceded_avg_last_{gw}"] = sum(
+                    m["goals_conceded"] for m in recent_away
+                ) / len(recent_away)
 
-        if len(away_history) >= 1:
-            recent_away = away_history[-goals_window:]
-            output.at[idx, f"away_goals_scored_avg_last_{goals_window}"] = sum(
-                m["goals_scored"] for m in recent_away
-            ) / len(recent_away)
-            output.at[idx, f"away_goals_conceded_avg_last_{goals_window}"] = sum(
-                m["goals_conceded"] for m in recent_away
-            ) / len(recent_away)
+        for fw in form_windows:
+            if len(home_history) >= 1:
+                recent_form_home = home_history[-fw:]
+                output.at[idx, f"home_win_rate_last_{fw}"] = sum(
+                    1 for m in recent_form_home if m["result"] == "win"
+                ) / len(recent_form_home)
 
-        if len(away_history) >= 1:
-            recent_form_away = away_history[-form_window:]
-            output.at[idx, f"away_win_rate_last_{form_window}"] = sum(
-                1 for m in recent_form_away if m["result"] == "win"
-            ) / len(recent_form_away)
+            if len(away_history) >= 1:
+                recent_form_away = away_history[-fw:]
+                output.at[idx, f"away_win_rate_last_{fw}"] = sum(
+                    1 for m in recent_form_away if m["result"] == "win"
+                ) / len(recent_form_away)
 
         h2h_key = (home_team, away_team) if home_team < away_team else (away_team, home_team)
         h2h_matches = list(h2h_history[h2h_key])
         if len(h2h_matches) >= 1:
-            recent_h2h = h2h_matches[-h2h_window:]
+            recent_h2h = h2h_matches[-max(h2h_windows):]
             for h2h_match in recent_h2h:
                 if h2h_match["home_team"] == home_team:
                     if h2h_match["home_score"] > h2h_match["away_score"]:

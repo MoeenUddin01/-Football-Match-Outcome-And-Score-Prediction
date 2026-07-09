@@ -24,8 +24,8 @@ elo_params:
     default: 20.0
 
 rolling_window_sizes:
-  form_window: 5
-  goals_window: 5
-  h2h_window: 5
+  form_window: [5, 10]
+  goals_window: [5, 10]
+  h2h_window: [5, 10]
 
 random_seed: 42
