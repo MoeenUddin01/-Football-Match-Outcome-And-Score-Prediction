@@ -176,6 +176,10 @@ def save_feature_table(
         "away_score",
         "goal_diff",
         "outcome",
+        "city",
+        "country",
+        "home_elo_post",
+        "away_elo_post",
     }
 
     feature_cols = [col for col in feature_df.columns if col not in identifier_cols]

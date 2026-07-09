@@ -144,12 +144,8 @@ def compute_elo_ratings(results_df: pd.DataFrame, config: Any | None = None) -> 
     elo_results = results_df.copy()
     elo_results["home_elo_pre"] = pd.NA
     elo_results["away_elo_pre"] = pd.NA
-    elo_results["home_elo_before"] = pd.NA
-    elo_results["away_elo_before"] = pd.NA
     elo_results["home_elo_post"] = pd.NA
     elo_results["away_elo_post"] = pd.NA
-    elo_results["home_elo_after"] = pd.NA
-    elo_results["away_elo_after"] = pd.NA
 
     for idx, row in elo_results.iterrows():
         home_team = str(row["home_team"])
@@ -160,8 +156,6 @@ def compute_elo_ratings(results_df: pd.DataFrame, config: Any | None = None) -> 
 
         elo_results.at[idx, "home_elo_pre"] = home_pre
         elo_results.at[idx, "away_elo_pre"] = away_pre
-        elo_results.at[idx, "home_elo_before"] = home_pre
-        elo_results.at[idx, "away_elo_before"] = away_pre
 
         k_factor = get_k_factor(str(row.get("tournament", "")), config=config_data)
         home_new, away_new, _, _ = calculate_elo_update(
@@ -181,8 +175,6 @@ def compute_elo_ratings(results_df: pd.DataFrame, config: Any | None = None) -> 
 
         elo_results.at[idx, "home_elo_post"] = home_new
         elo_results.at[idx, "away_elo_post"] = away_new
-        elo_results.at[idx, "home_elo_after"] = home_new
-        elo_results.at[idx, "away_elo_after"] = away_new
 
     return elo_results
 

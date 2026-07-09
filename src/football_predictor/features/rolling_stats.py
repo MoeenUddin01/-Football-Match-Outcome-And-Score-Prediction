@@ -99,13 +99,13 @@ def compute_rolling_features(
 
     FIRST_MATCH_DEFAULT_REST_DAYS = 30
 
-    output["home_goals_scored_avg_last_N"] = 0.0
-    output["home_goals_conceded_avg_last_N"] = 0.0
-    output["home_win_rate_last_N"] = 0.0
+    output[f"home_goals_scored_avg_last_{goals_window}"] = 0.0
+    output[f"home_goals_conceded_avg_last_{goals_window}"] = 0.0
+    output[f"home_win_rate_last_{form_window}"] = 0.0
     output["home_rest_days"] = FIRST_MATCH_DEFAULT_REST_DAYS
-    output["away_goals_scored_avg_last_N"] = 0.0
-    output["away_goals_conceded_avg_last_N"] = 0.0
-    output["away_win_rate_last_N"] = 0.0
+    output[f"away_goals_scored_avg_last_{goals_window}"] = 0.0
+    output[f"away_goals_conceded_avg_last_{goals_window}"] = 0.0
+    output[f"away_win_rate_last_{form_window}"] = 0.0
     output["away_rest_days"] = FIRST_MATCH_DEFAULT_REST_DAYS
     output["h2h_home_wins"] = 0
     output["h2h_away_wins"] = 0
@@ -138,31 +138,31 @@ def compute_rolling_features(
 
         if len(home_history) >= 1:
             recent_home = home_history[-goals_window:]
-            output.at[idx, "home_goals_scored_avg_last_N"] = sum(
+            output.at[idx, f"home_goals_scored_avg_last_{goals_window}"] = sum(
                 m["goals_scored"] for m in recent_home
             ) / len(recent_home)
-            output.at[idx, "home_goals_conceded_avg_last_N"] = sum(
+            output.at[idx, f"home_goals_conceded_avg_last_{goals_window}"] = sum(
                 m["goals_conceded"] for m in recent_home
             ) / len(recent_home)
 
         if len(home_history) >= 1:
             recent_form_home = home_history[-form_window:]
-            output.at[idx, "home_win_rate_last_N"] = sum(
+            output.at[idx, f"home_win_rate_last_{form_window}"] = sum(
                 1 for m in recent_form_home if m["result"] == "win"
             ) / len(recent_form_home)
 
         if len(away_history) >= 1:
             recent_away = away_history[-goals_window:]
-            output.at[idx, "away_goals_scored_avg_last_N"] = sum(
+            output.at[idx, f"away_goals_scored_avg_last_{goals_window}"] = sum(
                 m["goals_scored"] for m in recent_away
             ) / len(recent_away)
-            output.at[idx, "away_goals_conceded_avg_last_N"] = sum(
+            output.at[idx, f"away_goals_conceded_avg_last_{goals_window}"] = sum(
                 m["goals_conceded"] for m in recent_away
             ) / len(recent_away)
 
         if len(away_history) >= 1:
             recent_form_away = away_history[-form_window:]
-            output.at[idx, "away_win_rate_last_N"] = sum(
+            output.at[idx, f"away_win_rate_last_{form_window}"] = sum(
                 1 for m in recent_form_away if m["result"] == "win"
             ) / len(recent_form_away)
 

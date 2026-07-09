@@ -46,21 +46,21 @@ def test_known_answer_goals_scored_avg_last_3() -> None:
     result = compute_rolling_features(df, window_sizes={"goals_window": 3, "form_window": 3, "h2h_window": 3})
 
     # Match 0 (2020-01-01): Brazil at home, first match -> 0
-    assert result.iloc[0]["home_goals_scored_avg_last_N"] == 0.0
+    assert result.iloc[0]["home_goals_scored_avg_last_3"] == 0.0
 
     # Match 1 (2020-01-02): Argentina home vs Brazil
     # Brazil played once before (match 0) as home, scored 2 goals
-    assert result.iloc[1]["away_goals_scored_avg_last_N"] == 2.0
+    assert result.iloc[1]["away_goals_scored_avg_last_3"] == 2.0
 
     # Match 2 (2020-01-03): Brazil home vs Argentina
     # Brazil played twice before: match 0 (home, scored 2), match 1 (away, scored 2)
     # goals_scored_avg_last_3 = (2 + 2) / 2 = 2.0
-    assert result.iloc[2]["home_goals_scored_avg_last_N"] == 2.0
+    assert result.iloc[2]["home_goals_scored_avg_last_3"] == 2.0
 
     # Match 3 (2020-01-04): Argentina home vs Brazil
     # Brazil played 3 times before: match 0 (home, scored 2), match 1 (away, scored 2), match 2 (home, scored 3)
     # goals_scored_avg_last_3 = (2 + 2 + 3) / 3 = 2.333...
-    assert result.iloc[3]["away_goals_scored_avg_last_N"] == pytest.approx(2.333, abs=0.01)
+    assert result.iloc[3]["away_goals_scored_avg_last_3"] == pytest.approx(2.333, abs=0.01)
 
 
 def test_leakage_test_match_n_does_not_affect_match_n() -> None:
@@ -97,12 +97,12 @@ def test_leakage_test_match_n_does_not_affect_match_n() -> None:
 
     # Match 2's score changed from 3-0 to 99-0
     # But match 2's own rolling features should NOT change
-    assert result_original.iloc[2]["home_goals_scored_avg_last_N"] == result_modified.iloc[2]["home_goals_scored_avg_last_N"]
-    assert result_original.iloc[2]["home_goals_conceded_avg_last_N"] == result_modified.iloc[2]["home_goals_conceded_avg_last_N"]
-    assert result_original.iloc[2]["home_win_rate_last_N"] == result_modified.iloc[2]["home_win_rate_last_N"]
+    assert result_original.iloc[2]["home_goals_scored_avg_last_3"] == result_modified.iloc[2]["home_goals_scored_avg_last_3"]
+    assert result_original.iloc[2]["home_goals_conceded_avg_last_3"] == result_modified.iloc[2]["home_goals_conceded_avg_last_3"]
+    assert result_original.iloc[2]["home_win_rate_last_3"] == result_modified.iloc[2]["home_win_rate_last_3"]
 
     # Match 3's features SHOULD change because they depend on match 2
-    assert result_original.iloc[3]["away_goals_scored_avg_last_N"] != result_modified.iloc[3]["away_goals_scored_avg_last_N"]
+    assert result_original.iloc[3]["away_goals_scored_avg_last_3"] != result_modified.iloc[3]["away_goals_scored_avg_last_3"]
 
 
 def test_first_match_gets_defaults() -> None:
@@ -121,14 +121,14 @@ def test_first_match_gets_defaults() -> None:
     result = compute_rolling_features(df, window_sizes={"goals_window": 3, "form_window": 3, "h2h_window": 3})
 
     # Match 0: Both teams are playing for the first time
-    assert result.iloc[0]["home_goals_scored_avg_last_N"] == 0.0
-    assert result.iloc[0]["home_goals_conceded_avg_last_N"] == 0.0
-    assert result.iloc[0]["home_win_rate_last_N"] == 0.0
+    assert result.iloc[0]["home_goals_scored_avg_last_3"] == 0.0
+    assert result.iloc[0]["home_goals_conceded_avg_last_3"] == 0.0
+    assert result.iloc[0]["home_win_rate_last_3"] == 0.0
     assert result.iloc[0]["home_rest_days"] == 30
 
-    assert result.iloc[0]["away_goals_scored_avg_last_N"] == 0.0
-    assert result.iloc[0]["away_goals_conceded_avg_last_N"] == 0.0
-    assert result.iloc[0]["away_win_rate_last_N"] == 0.0
+    assert result.iloc[0]["away_goals_scored_avg_last_3"] == 0.0
+    assert result.iloc[0]["away_goals_conceded_avg_last_3"] == 0.0
+    assert result.iloc[0]["away_win_rate_last_3"] == 0.0
     assert result.iloc[0]["away_rest_days"] == 30
 
 
