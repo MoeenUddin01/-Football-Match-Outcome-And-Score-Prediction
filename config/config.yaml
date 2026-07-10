@@ -29,3 +29,11 @@ rolling_window_sizes:
   h2h_window: [5, 10]
 
 random_seed: 42
+
+# XGBoost outcome classifier hyperparameters
+model_params:
+  max_depth: 5
+  learning_rate: 0.05
+  n_estimators: 300
+  # Poisson regression regularization strength (higher = more regularization)
+  poisson_alpha: 1.0

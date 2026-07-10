@@ -73,3 +73,7 @@ The rolling stats engine in [src/football_predictor/features/rolling_stats.py](s
 ## Notes
 
 The project follows a temporal, leakage-safe design where features are built using only information available before each match date. This is especially important for Elo and other form-based features.
+
+### Known limitations
+
+**Neutral-venue home/away labeling is arbitrary.** For matches at neutral venues (e.g. World Cup, Euros), the `home_team` and `away_team` columns in the source data do not reflect a real home advantage. FIFA assigns "home" based on draw order (for kit/jersey selection), not geography. Empirically, home teams at neutral venues are only slightly more likely to have higher Elo (55.7%), and the labeling is neither alphabetical nor strength-based. The model's `home_elo_pre` / `away_elo_pre` and rolling form features are therefore symmetric for neutral matches — the "home" side carries no genuine advantage signal. This contributes to the lower accuracy on tournament matches (47% vs ~61% on validation) and is a property of the source data, not a pipeline bug.
