@@ -1,8 +1,3 @@
 {
-  "outputDirectory": ".next",
-  "functions": {
-    "api/index.py": {
-      "maxDuration": 30
-    }
-  }
+  "outputDirectory": ".next"
 }
