@@ -18,5 +18,4 @@ COPY . .
 # Expose port
 EXPOSE 7860
 
-# HF Spaces expects the app to listen on port 7860
-CMD ["uvicorn", "backend.app:app", "--host", "0.0.0.0", "--port", "7860"]
+CMD ["uv", "run", "uvicorn", "backend.app:app", "--host", "0.0.0.0", "--port", "7860"]
