@@ -1,0 +1,39 @@
+data_paths:
+  raw_dir: "data/raw"
+  raw_results: "data/raw/results.csv"
+  raw_goalscorers: "data/raw/goalscorers.csv"
+  raw_shootouts: "data/raw/shootouts.csv"
+  raw_former_names: "data/raw/former_names.csv"
+  interim_dir: "data/interim"
+  processed_dir: "data/processed"
+  artifacts_dir: "outputs/artifacts"
+
+date_splits:
+  train_end: "2018-12-31"
+  val_end: "2022-12-31"
+
+elo_params:
+  initial_rating: 1500.0
+  home_advantage: 100.0
+  k_factor_tiers:
+    friendly: 10.0
+    minor_tournament: 20.0
+    qualifier: 40.0
+    continental_championship: 50.0
+    world_cup: 60.0
+    default: 20.0
+
+rolling_window_sizes:
+  form_window: [5, 10]
+  goals_window: [5, 10]
+  h2h_window: [5, 10]
+
+random_seed: 42
+
+# XGBoost outcome classifier hyperparameters
+model_params:
+  max_depth: 5
+  learning_rate: 0.05
+  n_estimators: 300
+  # Poisson regression regularization strength (higher = more regularization)
+  poisson_alpha: 1.0

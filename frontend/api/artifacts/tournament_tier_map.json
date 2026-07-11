@@ -1,0 +1,17 @@
+{
+  "Friendly": "friendly",
+  "Minor Tournament": "minor_tournament",
+  "FIFA World Cup": "world_cup",
+  "UEFA Euro": "continental_championship",
+  "Copa America": "continental_championship",
+  "Copa Am\u00e9rica": "continental_championship",
+  "African Cup of Nations": "continental_championship",
+  "AFC Asian Cup": "continental_championship",
+  "Gold Cup": "continental_championship",
+  "FIFA World Cup qualification": "qualifier",
+  "UEFA Euro qualification": "qualifier",
+  "Copa America qualification": "qualifier",
+  "African Cup of Nations qualification": "qualifier",
+  "AFC Asian Cup qualification": "qualifier",
+  "Gold Cup qualification": "qualifier"
+}
