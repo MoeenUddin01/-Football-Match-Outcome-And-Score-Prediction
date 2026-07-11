@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: chronopitch-backend
+    runtime: docker
+    dockerfilePath: Dockerfile
+    plan: free
+    healthCheckPath: /
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12"
