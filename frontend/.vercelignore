@@ -1,2 +1,17 @@
-api/
-requirements.txt
+# Heavy frontend artifacts not needed for Python function
+node_modules/
+.next/
+.git/
+.vercel/
+
+# Python bytecode
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+
+# Duplicate data not used at runtime
+api/data/processed/results_cleaned.parquet
+api/src/data/
+api/scripts/run_pipeline.py
+api/scripts/compute_elo_artifacts.py

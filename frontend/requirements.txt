@@ -2,9 +2,9 @@ mangum
 fastapi
 pydantic
 pandas
-pyarrow
 numpy
 xgboost
 scikit-learn
+scipy
 joblib
 pyyaml

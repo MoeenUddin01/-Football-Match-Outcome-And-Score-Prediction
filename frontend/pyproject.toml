@@ -1,0 +1,19 @@
+[project]
+name = "chronopitch-api"
+version = "1.0.0"
+requires-python = ">=3.12"
+dependencies = [
+  "mangum",
+  "fastapi",
+  "pydantic",
+  "pandas",
+  "numpy",
+  "xgboost",
+  "scikit-learn",
+  "scipy",
+  "joblib",
+  "pyyaml",
+]
+
+[tool.uv]
+override-dependencies = ["nvidia-nccl-cu12; sys_platform == 'win32'"]

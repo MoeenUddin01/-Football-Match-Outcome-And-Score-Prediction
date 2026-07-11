@@ -50,7 +50,7 @@ def _ensure_loaded() -> None:
         "away_model": load_artifact("away_score_regressor.pkl", MODELS_DIR),
         "scaler": load_artifact("score_regressor_scaler.pkl", ARTIFACTS_DIR),
     }
-    FEATURES_DF = pd.read_parquet(DATA_PROCESSED / "features.parquet")
+    FEATURES_DF = pd.read_csv(DATA_PROCESSED / "features.csv", parse_dates=["date"])
 
     scorers = load_goalscorers(DATA_RAW)
     results = load_results(DATA_RAW)
