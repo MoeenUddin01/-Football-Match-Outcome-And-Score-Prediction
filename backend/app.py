@@ -9,7 +9,7 @@ from typing import Any
 import pandas as pd
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -24,19 +24,32 @@ from scripts.predict_match import (
     format_output,
     predict_match,
 )
+from football_predictor.data.loader import load_goalscorers, load_results
 from football_predictor.utils.io import load_artifact
 
 # ---------- State loaded once at startup ----------
 
 ARTIFACTS: dict[str, Any] = {}
 FEATURES_DF: pd.DataFrame = pd.DataFrame()
+GOALSCORERS_DF: pd.DataFrame = pd.DataFrame()
 
 
 def load_models() -> None:
     """Load all trained models and data into module globals."""
-    global ARTIFACTS, FEATURES_DF
+    global ARTIFACTS, FEATURES_DF, GOALSCORERS_DF
     ARTIFACTS = _load_artifacts()
     FEATURES_DF = pd.read_parquet(_REPO_ROOT / "data" / "processed" / "features.parquet")
+
+    # Load goalscorers and join tournament from results
+    scorers = load_goalscorers(_REPO_ROOT / "data" / "raw")
+    results = load_results(_REPO_ROOT / "data" / "raw")
+    # Deduplicate join keys (date + home_team + away_team can repeat)
+    results_tournament = results[["date", "home_team", "away_team", "tournament"]].drop_duplicates(
+        subset=["date", "home_team", "away_team"]
+    )
+    GOALSCORERS_DF = scorers.merge(
+        results_tournament, on=["date", "home_team", "away_team"], how="left"
+    )
 
 
 @asynccontextmanager
@@ -49,11 +62,22 @@ app = FastAPI(title="Football Prediction API", version="1.0.0", lifespan=lifespa
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:3001"],
+    allow_origins=[
+        "http://localhost:3000",
+        "http://localhost:3001",
+        "https://chronopitch.vercel.app",
+        "https://chronopitch-backend.fly.dev",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.get("/")
+def health_check() -> dict[str, str]:
+    """Health check endpoint for HF Spaces."""
+    return {"status": "ok"}
 
 
 # ---------- Request / response models ----------
@@ -78,6 +102,66 @@ class PredictResponse(BaseModel):
     poisson_home_lambda: float
     poisson_away_lambda: float
     poisson_probs: dict[str, float]
+
+
+# ---------- Helpers ----------
+
+
+def _compute_top_scorers(
+    df: pd.DataFrame,
+    *,
+    team: str | None = None,
+    tournament: str | None = None,
+    limit: int = 25,
+) -> list[dict[str, Any]]:
+    """Aggregate top scorers from the goalscorers DataFrame.
+
+    Own goals are excluded from goal_count because an own goal is scored
+    against the player's team, not for it — crediting the scorer would
+    double-count the event and misrepresent their offensive output.
+    Rows with null scorer names (44 known nulls in the source data) are
+    also excluded to avoid displaying "null" as a name.
+    """
+    filtered = df.copy()
+
+    if team:
+        filtered = filtered[filtered["team"] == team]
+    if tournament:
+        filtered = filtered[filtered["tournament"] == tournament]
+
+    # Exclude null scorers
+    filtered = filtered[filtered["scorer"].notna()]
+
+    # Count own goals separately before excluding them from goal_count.
+    # Own goals are scored against the scorer's team, not credited to
+    # them — crediting the scorer would double-count the event and
+    # misrepresent their offensive output.
+    own_goal_counts = (
+        filtered[filtered["own_goal"]]
+        .groupby("scorer", sort=False)
+        .size()
+        .rename("own_goal_count")
+    )
+
+    non_own = filtered[~filtered["own_goal"]]
+
+    agg = (
+        non_own.groupby("scorer", sort=False)
+        .agg(
+            team=("team", "first"),
+            goal_count=("scorer", "size"),
+            penalty_count=("penalty", "sum"),
+        )
+        .reset_index()
+    )
+
+    # Join own goal counts back in
+    agg = agg.merge(own_goal_counts, on="scorer", how="left")
+    agg["own_goal_count"] = agg["own_goal_count"].fillna(0).astype(int)
+
+    agg = agg.sort_values("goal_count", ascending=False).head(limit)
+
+    return agg.to_dict(orient="records")
 
 
 # ---------- Endpoints ----------
@@ -146,6 +230,66 @@ def predict(req: PredictRequest) -> PredictResponse:
         poisson_away_lambda=round(result["poisson_away_lambda"], 2),
         poisson_probs={k: round(v, 4) for k, v in result["poisson_probs"].items()},
     )
+
+
+@app.get("/api/top-scorers")
+def get_top_scorers(
+    team: str | None = Query(None),
+    tournament: str | None = Query(None),
+    limit: int = Query(25, ge=1, le=500),
+) -> list[dict[str, Any]]:
+    """Return top scorers filtered by optional team/tournament.
+
+    Own goals are excluded from a player's goal_count (an own goal is
+    scored against the player's team, not credited to them).  Rows with
+    null scorer names are silently dropped.
+    """
+    return _compute_top_scorers(GOALSCORERS_DF, team=team, tournament=tournament, limit=limit)
+
+
+@app.get("/api/top-scorers/team/{team_name}")
+def get_top_scorers_team(team_name: str) -> dict[str, Any]:
+    """Return top 10 scorers for a single team plus that team's total goals."""
+    team_df = GOALSCORERS_DF[GOALSCORERS_DF["team"] == team_name]
+
+    if team_df.empty:
+        raise HTTPException(status_code=404, detail=f"Team '{team_name}' not found in goalscorers data")
+
+    # Exclude null scorers and own goals (same logic as _compute_top_scorers)
+    valid = team_df[team_df["scorer"].notna()]
+
+    # Count own goals before excluding
+    own_goal_counts = (
+        valid[valid["own_goal"]]
+        .groupby("scorer", sort=False)
+        .size()
+        .rename("own_goal_count")
+    )
+
+    non_own = valid[~valid["own_goal"]]
+
+    agg = (
+        non_own.groupby("scorer", sort=False)
+        .agg(
+            team=("team", "first"),
+            goal_count=("scorer", "size"),
+            penalty_count=("penalty", "sum"),
+        )
+        .reset_index()
+    )
+
+    agg = agg.merge(own_goal_counts, on="scorer", how="left")
+    agg["own_goal_count"] = agg["own_goal_count"].fillna(0).astype(int)
+
+    agg = agg.sort_values("goal_count", ascending=False).head(10)
+
+    total_goals = int(len(non_own))
+
+    return {
+        "team": team_name,
+        "total_goals": total_goals,
+        "scorers": agg.to_dict(orient="records"),
+    }
 
 
 @app.get("/api/validation-report")

@@ -49,7 +49,7 @@ export default function RankingsPage() {
         {filtered.map((r) => (
           <div
             key={r.team}
-            className="flex items-center gap-4 bg-card border border-white/5 rounded-card px-4 py-3 hover:border-white/10 transition-colors"
+            className="flex items-center gap-4 bg-card border border-white/5 rounded-card px-4 py-3 hover:border-white/10 transition-colors card-hover"
           >
             <div className="w-8 h-8 rounded-full bg-background flex items-center justify-center text-sm font-bold text-muted flex-shrink-0">
               {r.rank}

@@ -49,17 +49,17 @@ export default function ValidationPage() {
       {/* Stat Cards */}
       {stats && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="bg-card border border-white/5 rounded-card p-5 text-center space-y-1">
+          <div className="bg-card border border-white/5 rounded-card p-5 text-center space-y-1 card-hover">
             <p className="text-3xl font-bold text-primary">{(stats.accuracy * 100).toFixed(1)}%</p>
             <p className="text-sm text-muted">Outcome Accuracy</p>
             <p className="text-xs text-muted">{stats.correct}/{stats.total} correct</p>
           </div>
-          <div className="bg-card border border-white/5 rounded-card p-5 text-center space-y-1">
+          <div className="bg-card border border-white/5 rounded-card p-5 text-center space-y-1 card-hover">
             <p className="text-3xl font-bold text-secondary">{(stats.exactScore * 100).toFixed(1)}%</p>
             <p className="text-sm text-muted">Exact Scoreline</p>
             <p className="text-xs text-muted">{stats.exact}/{stats.total} matches</p>
           </div>
-          <div className="bg-card border border-white/5 rounded-card p-5 text-center space-y-1">
+          <div className="bg-card border border-white/5 rounded-card p-5 text-center space-y-1 card-hover">
             <p className="text-3xl font-bold text-muted">
               {matches.filter((m) => m.xgb_correct && !m.poisson_exact).length}
             </p>
