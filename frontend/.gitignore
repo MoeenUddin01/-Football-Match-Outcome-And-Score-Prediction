@@ -37,3 +37,4 @@ api/**/*.egg-info/
 
 # Keep these in api/:
 # index.py, requirements.txt, src/, scripts/, models/, artifacts/, data/, config/
+.vercel
