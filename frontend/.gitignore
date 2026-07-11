@@ -1,3 +1,11 @@
+# Next.js
+.next/
+node_modules/
+next-env.d.ts
+
+# Environment
+.env.local
+
 # Python packages installed by Vercel build (pip install -t .)
 api/mangum/
 api/fastapi/

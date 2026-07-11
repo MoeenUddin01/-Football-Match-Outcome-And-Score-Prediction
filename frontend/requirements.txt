@@ -1,0 +1,10 @@
+mangum
+fastapi
+pydantic
+pandas
+pyarrow
+numpy
+xgboost
+scikit-learn
+joblib
+pyyaml
