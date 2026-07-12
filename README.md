@@ -1,79 +1,118 @@
-# Football Match Outcome & Score Prediction
+# ChronoPitch — Football Match Outcome & Score Prediction
 
-This project builds a temporally-valid machine learning pipeline for predicting international football match outcomes and scorelines using historical match data. The implementation is designed to avoid leakage by building features strictly from information available before each match date.
+A full-stack ML system that predicts international football match outcomes (win/draw/loss) and scorelines (Poisson goal models), using 49,502 historical matches from 1872–2026. Built with a modular Python backend and a Next.js frontend.
 
-## What is implemented
+Features are constructed strictly from information available before each match's kickoff date, preventing temporal leakage. Elo ratings, rolling form stats, and head-to-head records are computed via a single chronological forward pass.
 
-The repository now includes a modular Python package under [src/football_predictor](src/football_predictor) covering:
+## Live demo
 
-- Data loading for results, goalscorers, shootouts, and former names
-- Data cleaning with null-score filtering, chronological ordering, duplicate handling, and conflict logging
-- Team name resolution for historical identity mapping
-- A chronological Elo rating engine with pre/post-match ratings and tournament-tier K-factor mapping
-- Rolling statistics engine computing form, goals, rest days, and head-to-head features
-- Feature table builder that assembles all features and saves to parquet
-- Reusable artifact I/O helpers and a CLI pipeline entrypoint
-
-## Elo engine
-
-The Elo implementation in [src/football_predictor/features/elo.py](src/football_predictor/features/elo.py) follows the requested football Elo specification:
-
-- Home/away expected scores derived from rating differential and home advantage
-- Goal-difference multiplier applied as specified
-- Chronological forward-pass updates that prevent leakage
-- Pre-match ratings stored as `home_elo_pre` and `away_elo_pre`
-- Post-match ratings stored as `home_elo_post` and `away_elo_post`
-- Tournament-tier K-factor lookup configured in [config/config.yaml](config/config.yaml)
-
-## Rolling statistics
-
-The rolling stats engine in [src/football_predictor/features/rolling_stats.py](src/football_predictor/features/rolling_stats.py) computes team-level and head-to-head features using only prior matches:
-
-- **Team-level features** (for both home and away teams):
-  - Average goals scored and conceded over configurable windows (default: last 5 matches)
-  - Win rate over the form window
-  - Rest days since previous match (defaults to 30 for first appearances)
-- **Head-to-head features**:
-  - Home wins, away wins, and draws between the two specific teams
-- **Anti-leakage guarantee**: Single forward pass through chronological data; features for match N use only matches 1..N-1
-- Configurable window sizes in [config/config.yaml](config/config.yaml) under `rolling_window_sizes`
+- **Frontend**: Deployed on Vercel (Next.js 14, TypeScript, Tailwind CSS)
+- **Backend**: Deployed on Fly.io / Render (FastAPI + uvicorn, Docker)
 
 ## Project structure
 
-- [config](config) — project configuration and YAML settings
-- [data/raw](data/raw) — untouched raw CSV inputs
-- [data/interim](data/interim) — intermediate cleaned data
-- [data/processed](data/processed) — cleaned and feature-engineered training tables
-- [src/football_predictor](src/football_predictor) — package modules for data loading, cleaning, feature engineering, modeling, evaluation, and utilities
-- [tests](tests) — regression tests for core modules
-- [scripts](scripts) — pipeline and validation entrypoints
-- [outputs](outputs) — persisted artifacts, trained models, reports, and figures
+```
+├── config/config.yaml          # All hyperparameters, date splits, Elo params
+├── data/raw/                   # Untouched CSV inputs (results, goalscorers, shootouts, former_names)
+├── src/football_predictor/     # Core Python package
+│   ├── data/                   # Loader, cleaner, name resolver
+│   ├── features/               # Elo engine, rolling stats, feature builder
+│   ├── models/                 # Elo baseline, XGBoost classifier, Poisson regressor
+│   ├── evaluation/             # Metrics (log-loss, Brier, accuracy), temporal splitter
+│   └── utils/                  # Artifact I/O helpers
+├── backend/app.py              # FastAPI REST API
+├── frontend/                   # Next.js 14 app (TypeScript, Tailwind)
+├── scripts/                    # CLI tools: predict_match, validate, compute Elo artifacts
+├── tests/                      # 22 Python test files + 1 frontend test
+├── notebooks/                  # Exploratory data analysis
+└── Dockerfile                  # Python 3.12-slim, uv, uvicorn
+```
+
+## Architecture
+
+```
+raw CSVs → loader → cleaner → name_resolver
+       → features/elo.py         (chronological forward pass)
+       → features/rolling_stats.py (chronological forward pass)
+       → features/feature_builder.py (assembles final table → parquet)
+       → models/baseline_elo.py      (Elo-implied win probabilities)
+       → models/outcome_classifier.py (XGBoost multi-class)
+       → models/score_regressor.py    (Poisson goal models)
+       → evaluation/metrics.py
+       → evaluation/splitter.py   (temporal train/val/test splits)
+```
+
+### Frontend pages
+
+| Page | Description |
+|---|---|
+| **Predictor** | Select home/away teams and tournament → displays XGBoost probability bar chart, Poisson scoreline, and model disagreement notice |
+| **Rankings** | All teams ranked by current Elo rating with search |
+| **Scorers** | Top international goalscorers leaderboard with team/tournament filters |
+| **Validation** | World Cup 2022 + Euro 2024 backtest results with per-match predictions |
 
 ## Setup
 
-1. Create and activate a virtual environment.
-2. Install the package and dependencies:
+### Backend (Python 3.12+)
 
-   ```bash
-   .venv/bin/python -m pip install -e .
-   ```
+```bash
+# Install dependencies
+uv sync
 
-3. Run the test suite:
+# Run tests
+uv run pytest
 
-   ```bash
-   .venv/bin/python -m pytest
-   ```
+# Compute Elo artifacts (required before starting the server)
+uv run python scripts/compute_elo_artifacts.py
 
-4. Run the pipeline entrypoint:
+# Start the FastAPI server
+uvicorn backend.app:app --host 0.0.0.0 --port 7860
+```
 
-   ```bash
-   .venv/bin/python scripts/run_pipeline.py
-   ```
+### Frontend (Node.js 18+)
 
-## Notes
+```bash
+cd frontend
+npm install
+npm run dev    # http://localhost:3000
+```
 
-The project follows a temporal, leakage-safe design where features are built using only information available before each match date. This is especially important for Elo and other form-based features.
+## API endpoints
 
-### Known limitations
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/api/teams` | Sorted list of all teams |
+| `GET` | `/api/rankings` | Elo-ranked teams with ratings |
+| `GET` | `/api/tournaments` | Tournament names and tier mappings |
+| `POST` | `/api/predict` | XGBoost + Poisson prediction for a match |
+| `GET` | `/api/top-scorers` | Filterable top goalscorers |
+| `GET` | `/api/top-scorers/team/{name}` | Top scorers for a single team |
+| `GET` | `/api/validation-report` | WC 2022 + Euro 2024 backtest |
 
-**Neutral-venue home/away labeling is arbitrary.** For matches at neutral venues (e.g. World Cup, Euros), the `home_team` and `away_team` columns in the source data do not reflect a real home advantage. FIFA assigns "home" based on draw order (for kit/jersey selection), not geography. Empirically, home teams at neutral venues are only slightly more likely to have higher Elo (55.7%), and the labeling is neither alphabetical nor strength-based. The model's `home_elo_pre` / `away_elo_pre` and rolling form features are therefore symmetric for neutral matches — the "home" side carries no genuine advantage signal. This contributes to the lower accuracy on tournament matches (47% vs ~61% on validation) and is a property of the source data, not a pipeline bug.
+## Configuration
+
+All parameters live in `config/config.yaml`:
+
+- **Temporal splits**: train ≤ 2018-12-31, validation 2019–2022, test 2023+
+- **Elo**: initial=1500, home advantage=100, K-factor by tournament tier (friendly=10 → World Cup=60)
+- **Rolling windows**: form, goals, and H2H over last 5 and 10 matches
+- **Model**: XGBoost (max_depth=5, lr=0.05, 300 estimators), Poisson alpha=1.0
+
+## Scripts
+
+| Script | Description |
+|---|---|
+| `scripts/predict_match.py` | CLI tool to predict a single match (`--home`, `--away`, `--tournament`, `--neutral`) |
+| `scripts/validate_worldcup2022.py` | Replays WC 2022 + Euro 2024 fixtures, generates markdown report |
+| `scripts/compute_elo_artifacts.py` | Computes and saves current Elo ratings + tournament tier map |
+
+## Deployment
+
+- **Docker**: `Dockerfile` builds a Python 3.12-slim image, runs uvicorn on port 7860
+- **Fly.io**: `fly.toml` config for `chronopitch-backend` (shared-cpu-1x, 256MB)
+- **Render**: `render.yaml` for Docker-based deployment (free tier)
+- **Vercel**: `frontend/vercel.json` routes `/api/*` to a Python serverless function
+
+## Known limitations
+
+**Neutral-venue home/away labeling is arbitrary.** For matches at neutral venues (e.g. World Cup, Euros), the `home_team` and `away_team` columns reflect draw order for kit selection, not geography. Home teams at neutral venues carry no genuine advantage signal, contributing to lower accuracy on tournament matches (~47% vs ~61% on validation). This is a property of the source data, not a pipeline bug.
